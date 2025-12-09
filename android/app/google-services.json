@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "933171482600",
+    "project_id": "cabbooking-e2da4",
+    "storage_bucket": "cabbooking-e2da4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:933171482600:android:e52cc3cbc51ddc4e379e5d",
+        "android_client_info": {
+          "package_name": "com.example.cabbokking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA-v_-srdK2n6H0_62z_8wXfRaUXf5FQ6s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
