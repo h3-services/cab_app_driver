@@ -20,14 +20,11 @@ class NetworkPage extends StatefulWidget {
 
 class _NetworkPageState extends State<NetworkPage> with TickerProviderStateMixin {
   final NetworkService _networkService = NetworkService();
-  String _status = 'No Internet';
+  String _status = 'Disconnected';
+  String _speedInfo = '';
   bool _isConnected = false;
   bool _isLoading = true;
-  bool _isConnecting = false;
-  late AnimationController _pulseController;
-  late AnimationController _connectController;
-  late Animation<double> _pulseAnimation;
-  late Animation<double> _scaleAnimation;
+  bool _wasDisconnected = true;
 
   @override
   void initState() {
@@ -51,171 +48,94 @@ class _NetworkPageState extends State<NetworkPage> with TickerProviderStateMixin
   }
 
   void _listenToConnectivity() {
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
-      _checkNetwork();
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) async {
+      if (result != ConnectivityResult.none) {
+        // Only check when connection is detected
+        final speedTest = await _networkService.testInternetSpeed();
+        if (mounted) {
+          setState(() {
+            _isConnected = speedTest['connected'];
+            _status = speedTest['connected'] ? 'Connected' : 'Disconnected';
+            _speedInfo = speedTest['connected'] 
+                ? '${speedTest['speed']} (${speedTest['responseTime']}ms)'
+                : '';
+          });
+          
+          // Only navigate when internet comes back online and was previously disconnected
+          if (speedTest['connected'] && _wasDisconnected) {
+            _wasDisconnected = false;
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
+          }
+        }
+      } else {
+        // Connection lost
+        if (mounted) {
+          setState(() {
+            _isConnected = false;
+            _status = 'Disconnected';
+            _speedInfo = '';
+            _wasDisconnected = true;
+          });
+        }
+      }
     });
   }
 
   Future<void> _checkNetwork() async {
     setState(() => _isLoading = true);
-    final isConnected = await _networkService.isNetworkConnected();
+    final speedTest = await _networkService.testInternetSpeed();
+    setState(() {
+      _isLoading = false;
+      _isConnected = speedTest['connected'];
+      _status = speedTest['connected'] ? 'Connected' : 'Disconnected';
+      _speedInfo = speedTest['connected'] 
+          ? '${speedTest['speed']} (${speedTest['responseTime']}ms)'
+          : '';
+    });
     
-    if (isConnected) {
-      if (!_isConnected && mounted) {
-        setState(() {
-          _isLoading = false;
-          _isConnecting = true;
-          _status = 'Connecting...';
-        });
-        
-        _connectController.forward();
-        await Future.delayed(const Duration(milliseconds: 1500));
-        
-        if (mounted) {
-          setState(() {
-            _isConnected = true;
-            _isConnecting = false;
-            _status = 'Connected!';
-          });
-          
-          await Future.delayed(const Duration(milliseconds: 800));
-        }
-      }
-      
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MyHomePage(title: 'Cab Driver')),
-        );
-      }
-    } else {
-      setState(() {
-        _isLoading = false;
-        _isConnected = false;
-        _isConnecting = false;
-        _status = 'No Internet';
-      });
+    if (speedTest['connected']) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
     }
-  }
-
-  @override
-  void dispose() {
-    _pulseController.dispose();
-    _connectController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppColors.iconBg,
-              AppColors.iconBg.withOpacity(0.8),
-              AppColors.mainBg,
-            ],
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_isLoading)
-                AnimatedBuilder(
-                  animation: _pulseAnimation,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _pulseAnimation.value,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 4,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    );
-                  },
-                )
-              else if (_isConnecting)
-                AnimatedBuilder(
-                  animation: _scaleAnimation,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _scaleAnimation.value,
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.wifi,
-                            size: 150,
-                            color: Colors.orange,
-                          ),
-                          const SizedBox(height: 20),
-                          CircularProgressIndicator(
-                            strokeWidth: 3,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                )
-              else
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 500),
-                  child: _isConnected 
-                    ? Icon(
-                        Icons.wifi,
-                        key: ValueKey(_isConnected),
-                        size: 150,
-                        color: Colors.green,
-                      )
-                    : Image.asset(
-                        'assets/images/logo1.png',
-                        key: ValueKey(_isConnected),
-                        width: 150,
-                        height: 150,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.wifi_off,
-                            size: 150,
-                            color: Colors.red,
-                          );
-                        },
-                      ),
-                ),
-              const SizedBox(height: 40),
+      appBar: AppBar(
+        title: const Text('Network Status'),
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (_isLoading) const CircularProgressIndicator(),
+            Icon(
+              _isConnected ? Icons.wifi : Icons.wifi_off,
+              size: 80,
+              color: _isConnected ? Colors.green : Colors.red,
+            ),
+            const SizedBox(height: 20),
+            Text(_status, style: Theme.of(context).textTheme.headlineSmall),
+            if (_speedInfo.isNotEmpty) ...[
+              const SizedBox(height: 10),
               Text(
-                _status,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
+                'Speed: $_speedInfo',
+                style: Theme.of(context).textTheme.bodyLarge,
               ),
-              const SizedBox(height: 60),
-              if (!_isConnected && !_isLoading)
-                ElevatedButton(
-                  onPressed: _checkNetwork,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.iconBg,
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    elevation: 5,
-                  ),
-                  child: const Text(
-                    'Try Again',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
             ],
-          ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _checkNetwork,
+              child: const Text('Refresh'),
+            ),
+          ],
         ),
       ),
     );

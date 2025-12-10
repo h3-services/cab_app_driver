@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
-import '../pages/version_control_page.dart';
-import '../theme/colors.dart';
-
-void main() {
-  runApp(MaterialApp(
-    home: const LoginScreen(),
-    debugShowCheckedModeBanner: false,
-  ));
-}
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'loading_screen.dart';
+import '../pages/network_page.dart';
+import '../services/network_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,11 +16,29 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
+  @override
+  void initState() {
+    super.initState();
+    _listenToConnectivity();
+  }
+
+  void _listenToConnectivity() {
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+      if (result == ConnectivityResult.none && mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const NetworkPage()),
+          (route) => false,
+        );
+      }
+    });
+  }
+
   void _login() {
     if (_formKey.currentState!.validate()) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const VersionControlPage()),
+        MaterialPageRoute(builder: (context) => const LoadingScreen()),
       );
     }
   }
@@ -33,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void _googleSignIn() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const VersionControlPage()),
+      MaterialPageRoute(builder: (context) => const LoadingScreen()),
     );
   }
 
