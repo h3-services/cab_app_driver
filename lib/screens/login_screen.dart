@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/network_helper.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,18 +12,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  void _handleEmailLogin() {
+  void _handleEmailLogin() async {
     if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter email and password')),
       );
       return;
     }
-    Navigator.pushReplacementNamed(context, '/driverHome');
+    
+    final hasNetwork = await NetworkHelper.checkNetworkAndNavigate(context, onRetry: _handleEmailLogin);
+    if (hasNetwork) {
+      Navigator.pushReplacementNamed(context, '/driverHome');
+    }
   }
 
-  void _handleGoogleLogin() {
-    Navigator.pushReplacementNamed(context, '/driverHome');
+  void _handleGoogleLogin() async {
+    final hasNetwork = await NetworkHelper.checkNetworkAndNavigate(context, onRetry: _handleGoogleLogin);
+    if (hasNetwork) {
+      Navigator.pushReplacementNamed(context, '/driverHome');
+    }
   }
 
   @override

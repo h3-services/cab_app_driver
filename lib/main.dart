@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/login_screen.dart';
 import 'screens/driver_home_screen.dart';
 import 'services/fcm_service.dart';
+import 'widgets/network_wrapper.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -24,11 +25,12 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      initialRoute: '/login',
+      debugShowCheckedModeBanner: false,
+      home: const NetworkWrapper(child: LoginScreen()),
       routes: {
-        '/login': (context) => const LoginScreen(),
-        '/driverHome': (context) => const DriverHomeScreen(),
-      },debugShowCheckedModeBanner: false,
+        '/login': (context) => const NetworkWrapper(child: LoginScreen()),
+        '/driverHome': (context) => const NetworkWrapper(child: DriverHomeScreen()),
+      },
     );
   }
 }
