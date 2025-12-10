@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 import '../pages/version_control_page.dart';
+import '../theme/colors.dart';
+
+void main() {
+  runApp(MaterialApp(
+    home: const LoginScreen(),
+    debugShowCheckedModeBanner: false,
+  ));
+}
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.mainBg,
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Form(
@@ -41,7 +50,11 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               const Text(
                 'Cab Booking',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryText,
+                ),
               ),
               const SizedBox(height: 50),
               TextFormField(
@@ -78,6 +91,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.iconBg,
+                    foregroundColor: Colors.white,
+                  ),
                   child: const Text('Login'),
                 ),
               ),

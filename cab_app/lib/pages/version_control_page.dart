@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/version_control_service.dart';
 import 'network_page.dart';
+import 'home_page.dart';
+import '../theme/colors.dart';
+
+void main() {
+  runApp(MaterialApp(
+    home: const VersionControlPage(),
+    debugShowCheckedModeBanner: false,
+  ));
+}
 
 class VersionControlPage extends StatefulWidget {
   const VersionControlPage({super.key});
@@ -52,20 +61,36 @@ class _VersionControlPageState extends State<VersionControlPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.mainBg,
       appBar: AppBar(
         title: const Text('Version Control'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: AppColors.iconBg,
+        foregroundColor: Colors.white,
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (_isLoading) const CircularProgressIndicator(),
-            Text(_status, style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              _status,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                color: AppColors.primaryText,
+              ),
+            ),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _checkVersion,
-              child: const Text('Refresh'),
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MyHomePage(title: 'Cab Driver')),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.iconBg,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Continue'),
             ),
           ],
         ),
