@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/version_control_service.dart';
+import '../services/network_service.dart';
 import 'network_page.dart';
 
 class VersionControlPage extends StatefulWidget {
@@ -28,9 +29,10 @@ class _VersionControlPageState extends State<VersionControlPage> {
   void _listenToConnectivity() {
     Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
       if (result == ConnectivityResult.none && mounted) {
-        Navigator.pushReplacement(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const NetworkPage()),
+          (route) => false,
         );
       }
     });
