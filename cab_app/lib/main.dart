@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'services/version_control_service.dart';
+import 'services/network_service.dart';
+import 'pages/version_control_page.dart';
+import 'pages/network_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -30,7 +34,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'Flutter Demo Home Page'),debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -55,14 +59,56 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
+  final VersionControlService _versionService = VersionControlService(
+    minimumRequiredVersion: '1.0.0',
+    apiEndpoint: 'https://h3-services.github.io/versionController/cab_app_version.json',
+  );
+  final NetworkService _networkService = NetworkService();
+  String _versionStatus = 'Checking version...';
+  String _networkStatus = 'Checking network...';
+
+  @override
+  void initState() {
+    super.initState();
+    _checkVersion();
+    _checkNetwork();
+  }
+
+  Future<void> _checkVersion() async {
+    await _versionService.initialize();
+    setState(() {
+      if (_versionService.isUpdateAvailable()) {
+        _versionStatus = 'Update available: ${_versionService.getNewVersion()}';
+      } else {
+        _versionStatus = 'Current version: ${_versionService.getCurrentVersion()}';
+      }
+    });
+  }
+
+  Future<void> _checkNetwork() async {
+    final isConnected = await _networkService.isNetworkConnected();
+    setState(() {
+      _networkStatus = isConnected ? 'Network: Connected' : 'Network: Disconnected';
+    });
+    
+    // Auto-navigate based on connectivity
+    if (mounted) {
+      if (isConnected) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const VersionControlPage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const NetworkPage()),
+        );
+      }
+    }
+  }
 
   void _incrementCounter() {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
       _counter++;
     });
   }
@@ -104,6 +150,25 @@ class _MyHomePageState extends State<MyHomePage> {
           // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
+            Text(_versionStatus),
+            Text(_networkStatus),
+            const SizedBox(height: 30),
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const VersionControlPage()),
+              ),
+              child: const Text('Version Control'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NetworkPage()),
+              ),
+              child: const Text('Network Status'),
+            ),
+            const SizedBox(height: 20),
             const Text('You have pushed the button this many times:'),
             Text(
               '$_counter',
