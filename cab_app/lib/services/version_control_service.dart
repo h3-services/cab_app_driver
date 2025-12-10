@@ -1,56 +1,54 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:package_info_plus/package_info_plus.dart';
+import 'package:flutter/foundation.dart';
 
 class VersionControlService {
-  final String minimumRequiredVersion;
-  final String apiEndpoint;
+  static const String _apiUrl = 'https://h3-services.github.io/versionController/cab_app_version.json';
+  static const String _defaultAndroidVersion = '1.0.0';
+  static const String _defaultIosVersion = '1.0.0';
+  
+  String? _remoteAndroidVersion;
+  String? _remoteIosVersion;
+  bool _isInitialized = false;
 
-  String? _currentVersion;
-  String? _newVersion;
-
-  VersionControlService({
-    required this.minimumRequiredVersion,
-    required this.apiEndpoint,
-  });
-
-  /// Initializes the current version and fetches the latest version from API
-  Future<void> initialize() async {
-    final info = await PackageInfo.fromPlatform();
-    _currentVersion = info.version;
-
+  Future<bool> checkVersionAndInitialize() async {
     try {
-      final response = await http.get(Uri.parse(apiEndpoint));
+      final response = await http.get(Uri.parse(_apiUrl));
+      
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        _newVersion = data['version'];
-        print("Version fetched successfully");
+        final Map<String, dynamic> data = json.decode(response.body);
+        _remoteAndroidVersion = data['android'];
+        _remoteIosVersion = data['ios'];
+        _isInitialized = true;
+        
+        // Check if update is needed
+        return _isUpdateRequired();
+      } else {
+        if (kDebugMode) {
+          print('Failed to fetch version info: ${response.statusCode}');
+        }
+        return false; // If API fails, continue to app
       }
     } catch (e) {
-      print('Failed to fetch version: $e');
+      if (kDebugMode) {
+        print('Error checking version: $e');
+      }
+      return false; // If error occurs, continue to app
     }
   }
 
-  /// Returns true if a newer version is available
-  bool isUpdateAvailable() {
-    if (_newVersion == null || _currentVersion == null) return false;
-    return _compareVersions(_currentVersion!, _newVersion!) < 0;
+  bool _isUpdateRequired() {
+    if (!_isInitialized) return false;
+    
+    // For Android (you can modify this logic based on platform detection)
+    return _remoteAndroidVersion != _defaultAndroidVersion || 
+           _remoteIosVersion != _defaultIosVersion;
   }
 
-  /// Returns the new version string
-  String? getNewVersion() => _newVersion;
-
-  /// Returns the current version string
-  String? getCurrentVersion() => _currentVersion;
-
-  /// Compares two version strings like "1.2.3"
-  int _compareVersions(String v1, String v2) {
-    final a = v1.split('.').map(int.parse).toList();
-    final b = v2.split('.').map(int.parse).toList();
-    for (int i = 0; i < 3; i++) {
-      if (a[i] > b[i]) return 1;
-      if (a[i] < b[i]) return -1;
-    }
-    return 0;
-  }
+  String get currentAndroidVersion => _defaultAndroidVersion;
+  String get currentIosVersion => _defaultIosVersion;
+  String? get remoteAndroidVersion => _remoteAndroidVersion;
+  String? get remoteIosVersion => _remoteIosVersion;
+  
+  bool get isInitialized => _isInitialized;
 }

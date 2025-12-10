@@ -1,15 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import '../services/network_service.dart';
-import 'home_page.dart';
+import '../screens/login_screen.dart';
 import '../theme/colors.dart';
-
-void main() {
-  runApp(MaterialApp(
-    home: const NetworkPage(),
-    debugShowCheckedModeBanner: false,
-  ));
-}
 
 class NetworkPage extends StatefulWidget {
   const NetworkPage({super.key});
@@ -19,12 +10,11 @@ class NetworkPage extends StatefulWidget {
 }
 
 class _NetworkPageState extends State<NetworkPage> with TickerProviderStateMixin {
-  final NetworkService _networkService = NetworkService();
-  String _status = 'Disconnected';
-  String _speedInfo = '';
-  bool _isConnected = false;
-  bool _isLoading = true;
-  bool _wasDisconnected = true;
+  String _status = 'Connected';
+  bool _isConnected = true;
+  
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -33,70 +23,15 @@ class _NetworkPageState extends State<NetworkPage> with TickerProviderStateMixin
       duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
-    _connectController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
     _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
-      CurvedAnimation(parent: _connectController, curve: Curves.elasticOut),
-    );
     _checkNetwork();
-    _listenToConnectivity();
-  }
-
-  void _listenToConnectivity() {
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) async {
-      if (result != ConnectivityResult.none) {
-        // Only check when connection is detected
-        final speedTest = await _networkService.testInternetSpeed();
-        if (mounted) {
-          setState(() {
-            _isConnected = speedTest['connected'];
-            _status = speedTest['connected'] ? 'Connected' : 'Disconnected';
-            _speedInfo = speedTest['connected'] 
-                ? '${speedTest['speed']} (${speedTest['responseTime']}ms)'
-                : '';
-          });
-          
-          // Only navigate when internet comes back online and was previously disconnected
-          if (speedTest['connected'] && _wasDisconnected) {
-            _wasDisconnected = false;
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const LoginScreen()),
-            );
-          }
-        }
-      } else {
-        // Connection lost
-        if (mounted) {
-          setState(() {
-            _isConnected = false;
-            _status = 'Disconnected';
-            _speedInfo = '';
-            _wasDisconnected = true;
-          });
-        }
-      }
-    });
   }
 
   Future<void> _checkNetwork() async {
-    setState(() => _isLoading = true);
-    final speedTest = await _networkService.testInternetSpeed();
-    setState(() {
-      _isLoading = false;
-      _isConnected = speedTest['connected'];
-      _status = speedTest['connected'] ? 'Connected' : 'Disconnected';
-      _speedInfo = speedTest['connected'] 
-          ? '${speedTest['speed']} (${speedTest['responseTime']}ms)'
-          : '';
-    });
-    
-    if (speedTest['connected']) {
+    await Future.delayed(const Duration(seconds: 2));
+    if (mounted) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -105,37 +40,86 @@ class _NetworkPageState extends State<NetworkPage> with TickerProviderStateMixin
   }
 
   @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Network Status'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_isLoading) const CircularProgressIndicator(),
-            Icon(
-              _isConnected ? Icons.wifi : Icons.wifi_off,
-              size: 80,
-              color: _isConnected ? Colors.green : Colors.red,
-            ),
-            const SizedBox(height: 20),
-            Text(_status, style: Theme.of(context).textTheme.headlineSmall),
-            if (_speedInfo.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Text(
-                'Speed: $_speedInfo',
-                style: Theme.of(context).textTheme.bodyLarge,
+      backgroundColor: AppColors.mainBg,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.mainBg, Colors.white.withOpacity(0.9)],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _pulseAnimation.value,
+                          child: Icon(
+                            _isConnected ? Icons.wifi : Icons.wifi_off,
+                            size: 80,
+                            color: _isConnected ? Colors.green : Colors.red,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 30),
+                    Text(
+                      _status,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: _isConnected ? Colors.green : Colors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: Colors.green.withOpacity(0.3)),
+                      ),
+                      child: Text(
+                        'Network is working fine',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppColors.primaryText,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _checkNetwork,
-              child: const Text('Refresh'),
-            ),
-          ],
+          ),
         ),
       ),
     );

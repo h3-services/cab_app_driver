@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'loading_screen.dart';
-import '../pages/network_page.dart';
-import '../services/network_service.dart';
+import '../services/local_storage_service.dart';
+import '../models/driver.dart';
+import '../theme/colors.dart';
+import 'driver_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,42 +12,35 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final _localStorageService = LocalStorageService();
 
-  @override
-  void initState() {
-    super.initState();
-    _listenToConnectivity();
-  }
+  void _directLogin() async {
+    // Create a dummy driver for testing
+    final driver = Driver(
+      id: 'driver_001',
+      name: 'John Doe',
+      email: 'john@example.com',
+      phone: '+1234567890',
+      licenseNumber: 'DL123456',
+      aadhaarNumber: '1234-5678-9012',
+      vehicleType: 'Sedan',
+      vehicleNumber: 'ABC-1234',
+      vehicleModel: 'Toyota Camry',
+      status: 'approved',
+      isAvailable: false,
+      walletBalance: 1500.0,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
 
-  void _listenToConnectivity() {
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
-      if (result == ConnectivityResult.none && mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const NetworkPage()),
-          (route) => false,
-        );
-      }
-    });
-  }
-
-  void _login() {
-    if (_formKey.currentState!.validate()) {
+    await _localStorageService.saveDriver(driver);
+    
+    if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const LoadingScreen()),
+        MaterialPageRoute(builder: (context) => const DriverHomeScreen()),
       );
     }
-  }
-
-  void _googleSignIn() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoadingScreen()),
-    );
   }
 
   @override
@@ -56,75 +49,50 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.mainBg,
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'Cab Booking',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryText,
-                ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/images/loho.png',
+              width: 100,
+              height: 100,
+              errorBuilder: (context, error, stackTrace) {
+                return Icon(
+                  Icons.local_taxi,
+                  size: 100,
+                  color: AppColors.accentText,
+                );
+              },
+            ),
+            const SizedBox(height: 30),
+            
+            const Text(
+              'Cab Driver',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryText,
               ),
-              const SizedBox(height: 50),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
-                ),
-                validator: (value) {
-                  if (value?.isEmpty ?? true) return 'Enter email';
-                  if (!value!.contains('@')) return 'Enter valid email';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
-                ),
-                validator: (value) {
-                  if (value?.isEmpty ?? true) return 'Enter password';
-                  if (value!.length < 6) return 'Password too short';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 30),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.iconBg,
-                    foregroundColor: Colors.white,
+            ),
+            const SizedBox(height: 50),
+            
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _directLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1976D2),
+                  foregroundColor: Colors.white,
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text('Login'),
                 ),
+                child: const Text('Login as Driver'),
               ),
-              const SizedBox(height: 20),
-              const Text('OR'),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: OutlinedButton.icon(
-                  onPressed: _googleSignIn,
-                  icon: const Icon(Icons.login, color: Colors.red),
-                  label: const Text('Sign in with Google'),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

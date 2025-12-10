@@ -1,13 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/version_control_service.dart';
 import '../theme/colors.dart';
-
-void main() {
-  runApp(MaterialApp(
-    home: const UpdatePage(),
-    debugShowCheckedModeBanner: false,
-  ));
-}
+import '../screens/login_screen.dart';
 
 class UpdatePage extends StatefulWidget {
   const UpdatePage({super.key});
@@ -17,15 +11,10 @@ class UpdatePage extends StatefulWidget {
 }
 
 class _UpdatePageState extends State<UpdatePage> with TickerProviderStateMixin {
-  final VersionControlService _versionService = VersionControlService(
-    minimumRequiredVersion: '1.0.0',
-    apiEndpoint: 'https://h3-services.github.io/versionController/cab_app_version.json',
-  );
+  final VersionControlService _versionService = VersionControlService();
   
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
-  String _currentVersion = '';
-  String _newVersion = '';
 
   @override
   void initState() {
@@ -37,21 +26,19 @@ class _UpdatePageState extends State<UpdatePage> with TickerProviderStateMixin {
     _pulseAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    _loadVersionInfo();
-  }
-
-  Future<void> _loadVersionInfo() async {
-    await _versionService.initialize();
-    setState(() {
-      _currentVersion = _versionService.getCurrentVersion() ?? 'Unknown';
-      _newVersion = _versionService.getNewVersion() ?? 'Unknown';
-    });
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
     super.dispose();
+  }
+
+  void _skipUpdate() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+    );
   }
 
   @override
@@ -109,7 +96,7 @@ class _UpdatePageState extends State<UpdatePage> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 30),
                       Text(
-                        'Update Required',
+                        'Update Available',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -137,7 +124,7 @@ class _UpdatePageState extends State<UpdatePage> with TickerProviderStateMixin {
                                   ),
                                 ),
                                 Text(
-                                  _currentVersion,
+                                  _versionService.currentAndroidVersion,
                                   style: TextStyle(
                                     color: AppColors.primaryText,
                                     fontWeight: FontWeight.bold,
@@ -157,7 +144,7 @@ class _UpdatePageState extends State<UpdatePage> with TickerProviderStateMixin {
                                   ),
                                 ),
                                 Text(
-                                  _newVersion,
+                                  _versionService.remoteAndroidVersion ?? 'Unknown',
                                   style: TextStyle(
                                     color: Colors.green,
                                     fontWeight: FontWeight.bold,
@@ -185,7 +172,9 @@ class _UpdatePageState extends State<UpdatePage> with TickerProviderStateMixin {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
-                      // Update action - no navigation
+                      // TODO: Implement actual update logic
+                      // For now, just navigate to login
+                      _skipUpdate();
                     },
                     icon: const Icon(Icons.download),
                     label: const Text('Update Now'),
@@ -202,11 +191,9 @@ class _UpdatePageState extends State<UpdatePage> with TickerProviderStateMixin {
                 ),
                 const SizedBox(height: 15),
                 TextButton(
-                  onPressed: () {
-                    // Later action - no navigation
-                  },
+                  onPressed: _skipUpdate,
                   child: Text(
-                    'Update Later',
+                    'Skip for Now',
                     style: TextStyle(
                       color: AppColors.grayText,
                     ),

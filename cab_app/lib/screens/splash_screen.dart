@@ -1,18 +1,8 @@
 import 'package:flutter/material.dart';
-import '../services/network_service.dart';
-import '../services/version_control_service.dart';
+import '../services/local_storage_service.dart';
 import '../theme/colors.dart';
 import 'login_screen.dart';
-import '../pages/network_page.dart';
-import '../pages/update_page.dart';
-import '../pages/home_page.dart';
-
-void main() {
-  runApp(MaterialApp(
-    home: const SplashScreen(),
-    debugShowCheckedModeBanner: false,
-  ));
-}
+import 'driver_home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -22,11 +12,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  final NetworkService _networkService = NetworkService();
-  final VersionControlService _versionService = VersionControlService(
-    minimumRequiredVersion: '1.0.0',
-    apiEndpoint: 'https://h3-services.github.io/versionController/cab_app_version.json',
-  );
+  final LocalStorageService _localStorageService = LocalStorageService();
   
   String _status = 'Initializing...';
   late AnimationController _logoController;
@@ -60,50 +46,32 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Future<void> _initializeApp() async {
     await Future.delayed(const Duration(seconds: 1));
     
-    setState(() => _status = 'Checking network...');
+    setState(() => _status = 'Loading...');
     await Future.delayed(const Duration(milliseconds: 500));
     
-    final isConnected = await _networkService.isNetworkConnected();
-    
-    if (!isConnected) {
-      _navigateToNetworkPage();
-      return;
-    }
-    
-    setState(() => _status = 'Checking version...');
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    await _versionService.initialize();
-    
-    if (_versionService.isUpdateAvailable()) {
-      _navigateToUpdatePage();
-      return;
-    }
+    final isLoggedIn = await _localStorageService.isLoggedIn();
     
     setState(() => _status = 'Ready to go!');
     await Future.delayed(const Duration(milliseconds: 800));
     
-    _navigateToHome();
-  }
-
-  void _navigateToNetworkPage() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const NetworkPage()),
-    );
-  }
-
-  void _navigateToUpdatePage() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const UpdatePage()),
-    );
+    if (isLoggedIn) {
+      _navigateToHome();
+    } else {
+      _navigateToLogin();
+    }
   }
 
   void _navigateToHome() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const MyHomePage(title: 'Cab Driver')),
+      MaterialPageRoute(builder: (context) => const DriverHomeScreen()),
+    );
+  }
+
+  void _navigateToLogin() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
     );
   }
 
@@ -135,31 +103,17 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 builder: (context, child) {
                   return Transform.scale(
                     scale: _logoAnimation.value,
-                    child: Container(
-                      padding: const EdgeInsets.all(30),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'assets/images/logo1.png',
-                        width: 80,
-                        height: 80,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.local_taxi,
-                            size: 80,
-                            color: AppColors.accentText,
-                          );
-                        },
-                      ),
+                    child: Image.asset(
+                      'assets/images/loho.png',
+                      width: 120,
+                      height: 120,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.local_taxi,
+                          size: 120,
+                          color: AppColors.accentText,
+                        );
+                      },
                     ),
                   );
                 },
