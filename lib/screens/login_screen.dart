@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/network_helper.dart';
+import '../services/network_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,6 +12,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    _checkNetworkOnStart();
+  }
+
+  void _checkNetworkOnStart() async {
+    await Future.delayed(const Duration(milliseconds: 500)); // Small delay for UI
+    if (mounted) {
+      NetworkService.checkNetworkAndNavigate(context, onRetry: _checkNetworkOnStart);
+    }
+  }
+
   void _handleEmailLogin() async {
     if (_emailController.text.trim().isEmpty || _passwordController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -20,14 +33,14 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
     
-    final hasNetwork = await NetworkHelper.checkNetworkAndNavigate(context, onRetry: _handleEmailLogin);
+    final hasNetwork = await NetworkService.checkNetworkAndNavigate(context, onRetry: _handleEmailLogin);
     if (hasNetwork) {
       Navigator.pushReplacementNamed(context, '/driverHome');
     }
   }
 
   void _handleGoogleLogin() async {
-    final hasNetwork = await NetworkHelper.checkNetworkAndNavigate(context, onRetry: _handleGoogleLogin);
+    final hasNetwork = await NetworkService.checkNetworkAndNavigate(context, onRetry: _handleGoogleLogin);
     if (hasNetwork) {
       Navigator.pushReplacementNamed(context, '/driverHome');
     }
