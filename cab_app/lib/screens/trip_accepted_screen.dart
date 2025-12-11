@@ -417,29 +417,52 @@ class _TripAcceptedScreenState extends State<TripAcceptedScreen> {
               ),
             ]
             else if (_tripStatus == 'accepted') ...[
-              // Action buttons for accepted status
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      'Navigate',
+              // Navigation and Call Fields
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Trip Actions',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildActionField(
+                      'Navigate to Pickup',
+                      'Get directions to pickup location',
                       Icons.navigation,
                       AppColors.blueStart,
                       () => _navigateToLocation(_currentTrip.pickupLat, _currentTrip.pickupLng, _currentTrip.pickupAddress),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildActionButton(
-                      'Call',
+                    const SizedBox(height: 12),
+                    _buildActionField(
+                      'Call Rider',
+                      'Contact the rider directly',
                       Icons.call,
                       AppColors.pendingColor,
                       _callRider,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               _buildActionButton(
                 'Start Trip',
                 Icons.play_arrow,
@@ -448,28 +471,52 @@ class _TripAcceptedScreenState extends State<TripAcceptedScreen> {
                 isFullWidth: true,
               ),
             ] else if (_tripStatus == 'started') ...[
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      'To Drop',
+              // Navigation and Call Fields for Started Trip
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBg,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Trip in Progress',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildActionField(
+                      'Navigate to Drop',
+                      'Get directions to drop location',
                       Icons.navigation,
                       AppColors.blueStart,
                       () => _navigateToLocation(_currentTrip.dropLat, _currentTrip.dropLng, _currentTrip.dropAddress),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildActionButton(
-                      'Call',
+                    const SizedBox(height: 12),
+                    _buildActionField(
+                      'Call Rider',
+                      'Contact the rider if needed',
                       Icons.call,
                       AppColors.pendingColor,
                       _callRider,
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 16),
               _buildActionButton(
                 'Complete Trip',
                 Icons.check_circle,
@@ -614,5 +661,61 @@ class _TripAcceptedScreenState extends State<TripAcceptedScreen> {
       case 'completed': return 'Trip Completed';
       default: return 'Available';
     }
+  }
+
+  Widget _buildActionField(String title, String subtitle, IconData icon, Color color, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(12),
+          color: color.withOpacity(0.05),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primaryText,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.grayText,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppColors.grayText,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
