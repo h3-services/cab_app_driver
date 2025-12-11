@@ -5,10 +5,11 @@ import '../models/driver.dart';
 import '../models/trip.dart';
 import '../services/local_storage_service.dart';
 import '../theme/colors.dart';
-import 'driver_profile_screen.dart';
+import 'driver_profile_view_screen.dart';
 import 'wallet_screen.dart';
 import 'login_screen.dart';
 import 'trip_accepted_screen.dart';
+import 'kyc_upload_screen.dart';
 
 class DriverHomeScreen extends StatefulWidget {
   const DriverHomeScreen({super.key});
@@ -53,10 +54,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   Future<void> _loadDriverData() async {
     final driver = await _localStorageService.getDriver();
-    // Set negative balance for testing
-    final testDriver = driver?.copyWith(walletBalance: -120.50);
     setState(() {
-      _driver = testDriver;
+      _driver = driver;
       _isLoading = false;
     });
   }
@@ -101,9 +100,57 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   Future<void> _toggleAvailability() async {
     if (_driver == null) return;
     
+    // Show KYC dialog if not completed
+    if (!_driver!.kycCompleted && !_driver!.isAvailable) {
+      _showKycDialog();
+      return;
+    }
+    
     final updatedDriver = _driver!.copyWith(isAvailable: !_driver!.isAvailable);
     await _localStorageService.saveDriver(updatedDriver);
     setState(() => _driver = updatedDriver);
+  }
+
+  void _showKycDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.verified_user, color: AppColors.iconBg),
+              const SizedBox(width: 8),
+              const Text('KYC Verification Required'),
+            ],
+          ),
+          content: const Text(
+            'You need to complete KYC verification to go online and receive trip requests. Please upload your required documents.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel', style: TextStyle(color: AppColors.grayText)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => KycUploadScreen(driver: _driver!),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.acceptedColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Complete KYC'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _signOut() async {
@@ -121,7 +168,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => DriverProfileScreen(driver: _driver!),
+        builder: (context) => DriverProfileViewScreen(driver: _driver!),
       ),
     );
   }
@@ -168,19 +215,22 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.mainBg,
       appBar: AppBar(
-        title: Text('Hello, ${_driver!.name}'),
+        title: Text(_driver!.name),
         backgroundColor: AppColors.iconBg,
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            onPressed: _openProfile,
+        automaticallyImplyLeading: false,
+        leading: GestureDetector(
+          onTap: _openProfile,
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: AppColors.grayText,
+              child: const Icon(Icons.person, size: 20, color: Colors.white),
+            ),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
-          ),
-        ],
+        ),
+
       ),
       body: _buildBody(),
       bottomNavigationBar: BottomNavigationBar(
@@ -222,9 +272,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                     children: [
                       const Text('Availability Status', style: TextStyle(fontWeight: FontWeight.bold)),
                       Text(
-                        _driver!.isAvailable ? 'Available for trips' : 'Not available',
+                        _driver!.isAvailable ? 'Available for trips' : (_driver!.kycCompleted ? 'Not available' : 'KYC Required'),
                         style: TextStyle(
-                          color: _driver!.isAvailable ? Colors.green : Colors.red,
+                          color: _driver!.isAvailable ? Colors.green : (_driver!.kycCompleted ? Colors.red : Colors.grey),
                         ),
                       ),
                       if (_driver!.isAvailable) ...[
@@ -263,7 +313,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                   Switch(
                     value: _driver!.isAvailable,
                     onChanged: (_) => _toggleAvailability(),
-                    activeColor: Colors.green,
+                    activeColor: _driver!.kycCompleted ? Colors.green : Colors.grey,
+                    inactiveThumbColor: _driver!.kycCompleted ? null : Colors.grey,
                   ),
                 ],
               ),

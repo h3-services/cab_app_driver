@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/driver.dart';
 import '../services/local_storage_service.dart';
 import '../theme/colors.dart';
+import 'kyc_upload_screen.dart';
 
 class DriverProfileScreen extends StatefulWidget {
   final Driver driver;
@@ -21,7 +22,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _vehicleNumberController = TextEditingController();
-
+  String? _selectedVehicleType;
 
   @override
   void initState() {
@@ -35,6 +36,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     _phoneController.text = _driver.phone;
     _vehicleNumberController.text = _driver.vehicleNumber;
     _emailController.text = _driver.email ?? '';
+    _selectedVehicleType = _driver.vehicleType;
   }
 
   Future<void> _updateProfile() async {
@@ -42,7 +44,8 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       name: _nameController.text.trim(),
       phone: _phoneController.text.trim(),
       vehicleNumber: _vehicleNumberController.text.trim(),
-
+      email: _emailController.text.trim(),
+      vehicleType: _selectedVehicleType ?? _driver.vehicleType,
     );
 
     await _localStorageService.saveDriver(updatedDriver);
@@ -53,6 +56,59 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Profile updated successfully!')),
+    );
+  }
+
+  Future<void> _toggleAvailability() async {
+    if (!_driver.kycCompleted && !_driver.isAvailable) {
+      _showKycDialog();
+      return;
+    }
+    
+    final updatedDriver = _driver.copyWith(isAvailable: !_driver.isAvailable);
+    await _localStorageService.saveDriver(updatedDriver);
+    setState(() => _driver = updatedDriver);
+  }
+
+  void _showKycDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.verified_user, color: AppColors.iconBg),
+              const SizedBox(width: 8),
+              const Text('KYC Verification Required'),
+            ],
+          ),
+          content: const Text(
+            'You need to complete KYC verification to go online and receive trip requests. Please upload your required documents.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel', style: TextStyle(color: AppColors.grayText)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => KycUploadScreen(driver: _driver),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.acceptedColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Complete KYC'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -69,50 +125,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: AppColors.grayText,
-                      child: const Icon(Icons.person, size: 50, color: Colors.white),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _driver.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(_driver.status),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _driver.status,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildStatItem('Trips', '45'),
-                        _buildStatItem('Rating', '4.7⭐'),
-                        _buildStatItem('Earnings', '₹15750'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
+
 
             Card(
               child: Padding(
@@ -165,18 +178,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _updateProfile,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.iconBg,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Save Changes'),
-                        ),
-                      ),
                     ] else ...[
                       _buildInfoRow('Name', _driver.name),
                       _buildInfoRow('Email', _driver.email),
@@ -184,6 +185,18 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                       _buildInfoRow('License Number', _driver.licenseNumber),
                       _buildInfoRow('Aadhaar Number', _driver.aadhaarNumber),
                     ],
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _updateProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.iconBg,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text('Save'),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -202,6 +215,18 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     ),
                     const SizedBox(height: 16),
                     if (_isEditing) ...[
+                      DropdownButtonFormField<String>(
+                        value: _selectedVehicleType,
+                        decoration: const InputDecoration(
+                          labelText: 'Vehicle Type',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: ['SUV', 'Sedan', 'Hatchback'].map((type) {
+                          return DropdownMenuItem(value: type, child: Text(type));
+                        }).toList(),
+                        onChanged: (value) => setState(() => _selectedVehicleType = value),
+                      ),
+                      const SizedBox(height: 12),
                       TextFormField(
                         controller: _vehicleNumberController,
                         decoration: const InputDecoration(
@@ -209,7 +234,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-
                     ] else ...[
                       _buildInfoRow('Vehicle Type', _driver.vehicleType),
                       _buildInfoRow('Vehicle Number', _driver.vehicleNumber),
@@ -220,7 +244,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // KYC Documents Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -249,7 +272,6 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Performance Stats Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -263,7 +285,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     const SizedBox(height: 16),
                     _buildInfoRow('Total Trips', '45'),
                     _buildInfoRow('Total Earnings', '₹15750.00'),
-                    _buildInfoRow('Wallet Balance', '₹${_driver.walletBalance.toStringAsFixed(2)}'),
+                    _buildInfoRow('Wallet Balance', '₹${(_driver.walletBalance < 0 ? 0.0 : _driver.walletBalance).toStringAsFixed(2)}'),
                     _buildInfoRow('Member Since', _formatDate(_driver.createdAt)),
                   ],
                 ),

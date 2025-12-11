@@ -10,6 +10,7 @@ class Driver {
   final String vehicleModel;
   final String status; // pending, approved, rejected
   final bool isAvailable;
+  final bool kycCompleted;
   final double? latitude;
   final double? longitude;
   final String? profileImageUrl;
@@ -31,6 +32,7 @@ class Driver {
     required this.vehicleModel,
     this.status = 'pending',
     this.isAvailable = false,
+    this.kycCompleted = false,
     this.latitude,
     this.longitude,
     this.profileImageUrl,
@@ -54,6 +56,7 @@ class Driver {
       vehicleModel: map['vehicleModel'] ?? '',
       status: map['status'] ?? 'pending',
       isAvailable: map['isAvailable'] ?? false,
+      kycCompleted: map['kycCompleted'] ?? false,
       latitude: map['latitude']?.toDouble(),
       longitude: map['longitude']?.toDouble(),
       profileImageUrl: map['profileImageUrl'],
@@ -78,6 +81,7 @@ class Driver {
       'vehicleModel': vehicleModel,
       'status': status,
       'isAvailable': isAvailable,
+      'kycCompleted': kycCompleted,
       'latitude': latitude,
       'longitude': longitude,
       'profileImageUrl': profileImageUrl,
@@ -91,6 +95,7 @@ class Driver {
 
   Driver copyWith({
     String? name,
+    String? email,
     String? phone,
     String? licenseNumber,
     String? aadhaarNumber,
@@ -99,6 +104,7 @@ class Driver {
     String? vehicleModel,
     String? status,
     bool? isAvailable,
+    bool? kycCompleted,
     double? latitude,
     double? longitude,
     String? profileImageUrl,
@@ -109,7 +115,7 @@ class Driver {
     return Driver(
       id: id,
       name: name ?? this.name,
-      email: email,
+      email: email ?? this.email,
       phone: phone ?? this.phone,
       licenseNumber: licenseNumber ?? this.licenseNumber,
       aadhaarNumber: aadhaarNumber ?? this.aadhaarNumber,
@@ -118,6 +124,7 @@ class Driver {
       vehicleModel: vehicleModel ?? this.vehicleModel,
       status: status ?? this.status,
       isAvailable: isAvailable ?? this.isAvailable,
+      kycCompleted: kycCompleted ?? this.kycCompleted,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,

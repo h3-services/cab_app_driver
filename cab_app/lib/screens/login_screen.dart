@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/local_storage_service.dart';
 import '../models/driver.dart';
 import '../theme/colors.dart';
-import 'driver_home_screen.dart';
+import 'personal_details_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const DriverHomeScreen()),
+        MaterialPageRoute(builder: (context) => PersonalDetailsScreen(driver: driver)),
       );
     }
   }
