@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../screens/login_screen.dart';
+import 'dart:io';
+import 'login_page.dart';
 import '../theme/colors.dart';
 
 class NetworkPage extends StatefulWidget {
@@ -10,8 +11,8 @@ class NetworkPage extends StatefulWidget {
 }
 
 class _NetworkPageState extends State<NetworkPage> with TickerProviderStateMixin {
-  String _status = 'Connected';
-  bool _isConnected = true;
+  String _status = 'No Internet Connection';
+  bool _isConnected = false;
   
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
@@ -30,13 +31,8 @@ class _NetworkPageState extends State<NetworkPage> with TickerProviderStateMixin
   }
 
   Future<void> _checkNetwork() async {
+    // Network monitoring is now handled by NetworkWrapper
     await Future.delayed(const Duration(seconds: 2));
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    }
   }
 
   @override
@@ -102,12 +98,12 @@ class _NetworkPageState extends State<NetworkPage> with TickerProviderStateMixin
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.red.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.green.withOpacity(0.3)),
+                        border: Border.all(color: Colors.red.withOpacity(0.3)),
                       ),
                       child: Text(
-                        'Network is working fine',
+                        'Please check your internet connection',
                         style: TextStyle(
                           fontSize: 16,
                           color: AppColors.primaryText,
