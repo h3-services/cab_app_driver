@@ -10,4 +10,9 @@ class AppColors {
   static const Color emeraldEnd = Color(0xFF059669);
   static const Color blueStart = Color(0xFF3B82F6);
   static const Color blueEnd = Color(0xFF60A5FA);
+  static const Color cardBg = Color(0xFFFFFFFF);
+  static const Color cardBorder = Color(0xFFF3F4F6);
+  static const Color pendingColor = Color(0xFFF59E0B);
+  static const Color acceptedColor = Color(0xFF10B981);
+  static const Color rejectedColor = Color(0xFFEF4444);
 }

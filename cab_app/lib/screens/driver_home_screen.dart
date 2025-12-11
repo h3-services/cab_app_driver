@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/driver.dart';
@@ -20,21 +21,42 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   final _localStorageService = LocalStorageService();
   Driver? _driver;
   List<Trip> _availableTrips = [];
+  List<Trip> _approvedTrips = [];
+  List<Trip> _completedTrips = [];
   Map<String, String> _tripStatuses = {};
   bool _isLoading = true;
   int _selectedIndex = 0;
+  int _tripTabIndex = 0; // 0 = Available, 1 = Approved, 2 = Completed
+  bool _isGpsEnabled = true;
+  bool _isInternetConnected = true;
+  DateTime _lastLocationUpdate = DateTime.now();
+  bool _isLocationLive = true;
 
   @override
   void initState() {
     super.initState();
     _loadDriverData();
     _loadMockTrips();
+    _startLocationUpdates();
+  }
+
+  void _startLocationUpdates() {
+    // Simulate location updates every 10 seconds
+    Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (mounted && _driver?.isAvailable == true) {
+        setState(() {
+          _lastLocationUpdate = DateTime.now();
+        });
+      }
+    });
   }
 
   Future<void> _loadDriverData() async {
     final driver = await _localStorageService.getDriver();
+    // Set negative balance for testing
+    final testDriver = driver?.copyWith(walletBalance: -120.50);
     setState(() {
-      _driver = driver;
+      _driver = testDriver;
       _isLoading = false;
     });
   }
@@ -106,13 +128,15 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
 
   void _acceptTrip(Trip trip) {
     setState(() {
-      _tripStatuses[trip.id] = 'accepted';
+      _availableTrips.remove(trip);
+      _approvedTrips.add(trip);
+      _tripStatuses[trip.id] = 'pending';
     });
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Trip to ${trip.dropAddress} accepted!'),
-        backgroundColor: Colors.green,
+        content: Text('Trip request sent to admin for approval!'),
+        backgroundColor: AppColors.pendingColor,
       ),
     );
 
@@ -203,6 +227,37 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                           color: _driver!.isAvailable ? Colors.green : Colors.red,
                         ),
                       ),
+                      if (_driver!.isAvailable) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: _isLocationLive ? Colors.green : Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _isLocationLive ? 'Location Live' : 'Location Offline',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _isLocationLive ? Colors.green : Colors.red,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          'Last updated: ${_getTimeAgo(_lastLocationUpdate)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.grayText,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   Switch(
@@ -216,145 +271,429 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
           ),
           const SizedBox(height: 20),
 
+          // Warning Cards
           if (_driver!.isAvailable) ...[
-            const Text('Available Trips', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 10),
-            ..._availableTrips.map((trip) {
-              final status = _tripStatuses[trip.id] ?? 'available';
-              return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Trip Status Badge
-                      if (status != 'available')
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(status).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: _getStatusColor(status).withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(_getStatusIcon(status), color: _getStatusColor(status), size: 16),
-                              const SizedBox(width: 6),
-                              Text(
-                                _getStatusText(status),
-                                style: TextStyle(
-                                  color: _getStatusColor(status),
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
+            // Battery Optimization Warning
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: AppColors.pendingColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.pendingColor.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.battery_alert, color: AppColors.pendingColor, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Disable battery optimization for accurate location tracking.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.pendingColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // GPS Alert
+            if (!_isGpsEnabled)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.rejectedColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.rejectedColor.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.gps_off, color: AppColors.rejectedColor, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'GPS is disabled. Enable GPS for location tracking.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.rejectedColor,
+                          fontWeight: FontWeight.w500,
                         ),
-                      
-                      Row(
-                        children: [
-                          Icon(Icons.location_on, color: Colors.green, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              trip.pickupAddress,
-                              style: const TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        ],
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on, color: Colors.red, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              trip.dropAddress,
-                              style: const TextStyle(fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        ],
+                    ),
+                  ],
+                ),
+              ),
+            
+            // Internet Alert
+            if (!_isInternetConnected)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.grayText.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.grayText.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.wifi_off, color: AppColors.grayText, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Internet offline. Sync pending...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.grayText,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Fare: ₹${trip.fare.toStringAsFixed(0)}', 
-                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                              Text('Distance: ${trip.distance?.toStringAsFixed(1)} km'),
-                              if (trip.riderName != null)
-                                Text('Rider: ${trip.riderName}'),
-                            ],
-                          ),
-                          if (status == 'available')
-                            Container(
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                                ),
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 3),
-                                  ),
-                                ],
-                              ),
-                              child: ElevatedButton(
-                                onPressed: () => _acceptTrip(trip),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.transparent,
-                                  shadowColor: Colors.transparent,
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(25),
-                                  ),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('Accept Ride', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                              ),
-                            )
-                          else
-                            ElevatedButton(
-                              onPressed: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => TripAcceptedScreen(trip: trip),
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                              ),
-                              child: const Text('View Trip'),
-                            ),
-                        ],
-                      ),
-                    ],
+                    ),
+                  ],
+                ),
+              ),
+          ],
+
+          if (_driver!.isAvailable) ...[
+            // Tab Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() => _tripTabIndex = 0),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _tripTabIndex == 0 ? AppColors.acceptedColor : AppColors.cardBg,
+                      foregroundColor: _tripTabIndex == 0 ? Colors.white : AppColors.grayText,
+                      elevation: _tripTabIndex == 0 ? 2 : 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text('Available (${_availableTrips.length})'),
                   ),
                 ),
-              );
-            }).toList(),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => setState(() => _tripTabIndex = 1),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _tripTabIndex == 1 ? AppColors.acceptedColor : AppColors.cardBg,
+                      foregroundColor: _tripTabIndex == 1 ? Colors.white : AppColors.grayText,
+                      elevation: _tripTabIndex == 1 ? 2 : 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text('Approved (${_approvedTrips.length})'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: _tripTabIndex == 2 ? AppColors.acceptedColor : AppColors.cardBg,
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: _tripTabIndex == 2 ? [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ] : null,
+                  ),
+                  child: IconButton(
+                    onPressed: () => setState(() => _tripTabIndex = 2),
+                    icon: Icon(
+                      Icons.history,
+                      color: _tripTabIndex == 2 ? Colors.white : AppColors.grayText,
+                    ),
+                    tooltip: 'Completed Trips (${_completedTrips.length})',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            
+            // Trip Content based on selected tab
+            if (_tripTabIndex == 0)
+              ..._availableTrips.map((trip) => _buildTripCard(trip, false)).toList()
+            else if (_tripTabIndex == 1)
+              ..._approvedTrips.map((trip) => _buildTripCard(trip, true)).toList()
+            else
+              ..._completedTrips.map((trip) => _buildCompletedTripCard(trip)).toList(),
           ],
         ],
       ),
     );
+  }
+
+  Widget _buildTripCard(Trip trip, bool isApproved) {
+    final status = _tripStatuses[trip.id] ?? 'available';
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Trip Status Badge
+            if (status != 'available')
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(status).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _getStatusColor(status).withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_getStatusIcon(status), color: _getStatusColor(status), size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      _getStatusText(status),
+                      style: TextStyle(
+                        color: _getStatusColor(status),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Colors.green, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    trip.pickupAddress,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Colors.red, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    trip.dropAddress,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Fare: ₹${trip.fare.toStringAsFixed(0)}', 
+                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text('Distance: ${trip.distance?.toStringAsFixed(1)} km'),
+                    if (trip.riderName != null)
+                      Text('Rider: ${trip.riderName}'),
+                  ],
+                ),
+                if (!isApproved && status == 'available')
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () => _acceptTrip(trip),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle_outline, color: Colors.white, size: 18),
+                          SizedBox(width: 8),
+                          Text('Accept Ride', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  )
+                else if (isApproved)
+                  ElevatedButton(
+                    onPressed: () async {
+                      final result = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TripAcceptedScreen(trip: trip),
+                        ),
+                      );
+                      if (result == 'completed') {
+                        _moveToCompleted(trip);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.blueStart,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                    child: const Text('View Trip'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompletedTripCard(Trip trip) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.acceptedColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.acceptedColor.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle, color: AppColors.acceptedColor, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Completed',
+                    style: TextStyle(
+                      color: AppColors.acceptedColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Colors.green, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    trip.pickupAddress,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Colors.red, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    trip.dropAddress,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Earned: ₹${trip.fare.toStringAsFixed(0)}', 
+                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.acceptedColor)),
+                    Text('Distance: ${trip.distance?.toStringAsFixed(1)} km'),
+                    if (trip.completedAt != null)
+                      Text('Completed: ${_formatDate(trip.completedAt!)}', 
+                           style: TextStyle(color: AppColors.grayText, fontSize: 12)),
+                  ],
+                ),
+                Icon(Icons.check_circle, color: AppColors.acceptedColor, size: 32),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+    
+    if (difference.inDays == 0) {
+      return 'Today ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  void _moveToCompleted(Trip trip) {
+    setState(() {
+      _approvedTrips.remove(trip);
+      final completedTrip = Trip(
+        id: trip.id,
+        riderId: trip.riderId,
+        driverId: trip.driverId,
+        pickupAddress: trip.pickupAddress,
+        dropAddress: trip.dropAddress,
+        pickupLat: trip.pickupLat,
+        pickupLng: trip.pickupLng,
+        dropLat: trip.dropLat,
+        dropLng: trip.dropLng,
+        vehicleType: trip.vehicleType,
+        fare: trip.fare,
+        status: 'completed',
+        requestedAt: trip.requestedAt,
+        acceptedAt: trip.acceptedAt,
+        startedAt: trip.startedAt,
+        completedAt: DateTime.now(),
+        riderName: trip.riderName,
+        riderPhone: trip.riderPhone,
+        distance: trip.distance,
+        startKm: trip.startKm,
+        endKm: trip.endKm,
+        tollAmount: trip.tollAmount,
+        driverAllowance: trip.driverAllowance,
+        kmRate: trip.kmRate,
+        walletFeeDeducted: trip.walletFeeDeducted,
+      );
+      _completedTrips.add(completedTrip);
+      _tripStatuses.remove(trip.id);
+    });
   }
 
   Color _getStatusColor(String status) {
@@ -381,6 +720,19 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       case 'started': return 'Trip Started';
       case 'completed': return 'Trip Completed';
       default: return 'Available';
+    }
+  }
+
+  String _getTimeAgo(DateTime time) {
+    final now = DateTime.now();
+    final difference = now.difference(time);
+    
+    if (difference.inSeconds < 60) {
+      return '${difference.inSeconds} sec ago';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} min ago';
+    } else {
+      return '${difference.inHours}h ago';
     }
   }
 }

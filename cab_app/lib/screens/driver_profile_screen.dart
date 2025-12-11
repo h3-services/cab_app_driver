@@ -19,8 +19,9 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
   final _vehicleNumberController = TextEditingController();
-  final _vehicleModelController = TextEditingController();
+
 
   @override
   void initState() {
@@ -33,7 +34,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     _nameController.text = _driver.name;
     _phoneController.text = _driver.phone;
     _vehicleNumberController.text = _driver.vehicleNumber;
-    _vehicleModelController.text = _driver.vehicleModel;
+    _emailController.text = _driver.email ?? '';
   }
 
   Future<void> _updateProfile() async {
@@ -41,7 +42,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
       name: _nameController.text.trim(),
       phone: _phoneController.text.trim(),
       vehicleNumber: _vehicleNumberController.text.trim(),
-      vehicleModel: _vehicleModelController.text.trim(),
+
     );
 
     await _localStorageService.saveDriver(updatedDriver);
@@ -90,13 +91,22 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.green,
+                        color: _getStatusColor(_driver.status),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'APPROVED',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      child: Text(
+                        _driver.status,
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildStatItem('Trips', '45'),
+                        _buildStatItem('Rating', '4.7⭐'),
+                        _buildStatItem('Earnings', '₹15750'),
+                      ],
                     ),
                   ],
                 ),
@@ -147,6 +157,14 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                           border: OutlineInputBorder(),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Email (Optional)',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       SizedBox(
                         width: double.infinity,
@@ -191,19 +209,62 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _vehicleModelController,
-                        decoration: const InputDecoration(
-                          labelText: 'Vehicle Model',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
+
                     ] else ...[
                       _buildInfoRow('Vehicle Type', _driver.vehicleType),
                       _buildInfoRow('Vehicle Number', _driver.vehicleNumber),
-                      _buildInfoRow('Vehicle Model', _driver.vehicleModel),
                     ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // KYC Documents Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'KYC Documents',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildDocumentCard('License Image', _driver.licenseImageUrl != null),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildDocumentCard('Aadhaar Image', _driver.aadhaarImageUrl != null),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Performance Stats Card
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Performance Stats',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildInfoRow('Total Trips', '45'),
+                    _buildInfoRow('Total Earnings', '₹15750.00'),
+                    _buildInfoRow('Wallet Balance', '₹${_driver.walletBalance.toStringAsFixed(2)}'),
+                    _buildInfoRow('Member Since', _formatDate(_driver.createdAt)),
                   ],
                 ),
               ),
@@ -214,7 +275,7 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -229,12 +290,80 @@ class _DriverProfileScreenState extends State<DriverProfileScreen> {
           ),
           Expanded(
             child: Text(
-              value,
+              value ?? 'Not provided',
               style: const TextStyle(fontWeight: FontWeight.w500),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildStatItem(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        Text(
+          label,
+          style: TextStyle(color: AppColors.grayText, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDocumentCard(String title, bool isUploaded) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isUploaded ? AppColors.acceptedColor.withOpacity(0.1) : AppColors.grayText.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isUploaded ? AppColors.acceptedColor : AppColors.grayText,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            isUploaded ? Icons.check_circle : Icons.upload_file,
+            color: isUploaded ? AppColors.acceptedColor : AppColors.grayText,
+            size: 24,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: isUploaded ? AppColors.acceptedColor : AppColors.grayText,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          Text(
+            isUploaded ? 'Uploaded' : 'Pending',
+            style: TextStyle(
+              fontSize: 10,
+              color: isUploaded ? AppColors.acceptedColor : AppColors.grayText,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'APPROVED': return AppColors.acceptedColor;
+      case 'PENDING': return AppColors.pendingColor;
+      case 'REJECTED': return AppColors.rejectedColor;
+      case 'SUSPENDED': return AppColors.rejectedColor;
+      default: return AppColors.grayText;
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }

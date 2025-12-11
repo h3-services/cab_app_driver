@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/driver.dart';
+import '../models/transaction.dart';
 import '../theme/colors.dart';
 
 class WalletScreen extends StatefulWidget {
@@ -12,22 +13,39 @@ class WalletScreen extends StatefulWidget {
 }
 
 class _WalletScreenState extends State<WalletScreen> {
-  List<Map<String, dynamic>> _transactions = [
-    {
-      'amount': 250.0,
-      'type': 'trip_earning',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-    },
-    {
-      'amount': 180.0,
-      'type': 'trip_earning',
-      'timestamp': DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
-    },
-    {
-      'amount': 320.0,
-      'type': 'trip_earning',
-      'timestamp': DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-    },
+  List<Transaction> _transactions = [
+    Transaction(
+      id: '1',
+      amount: 250.0,
+      type: 'trip_earning',
+      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+      tripId: 'TRIP001',
+      description: 'Trip Earning - TRIP001',
+    ),
+    Transaction(
+      id: '2',
+      amount: -5.0,
+      type: 'trip_fee',
+      timestamp: DateTime.now().subtract(const Duration(hours: 2, minutes: 5)),
+      tripId: 'TRIP001',
+      description: 'Trip Fee - TRIP001',
+    ),
+    Transaction(
+      id: '3',
+      amount: 180.0,
+      type: 'trip_earning',
+      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
+      tripId: 'TRIP002',
+      description: 'Trip Earning - TRIP002',
+    ),
+    Transaction(
+      id: '4',
+      amount: -3.6,
+      type: 'trip_fee',
+      timestamp: DateTime.now().subtract(const Duration(hours: 5, minutes: 5)),
+      tripId: 'TRIP002',
+      description: 'Trip Fee - TRIP002',
+    ),
   ];
 
   @override
@@ -47,7 +65,9 @@ class _WalletScreenState extends State<WalletScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   gradient: LinearGradient(
-                    colors: [AppColors.emeraldStart, AppColors.emeraldEnd],
+                    colors: widget.driver.walletBalance < 0 
+                        ? [AppColors.rejectedColor, AppColors.rejectedColor.withOpacity(0.8)]
+                        : [AppColors.emeraldStart, AppColors.emeraldEnd],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -55,13 +75,35 @@ class _WalletScreenState extends State<WalletScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Wallet Balance',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    Row(
+                      children: [
+                        const Text(
+                          'Wallet Balance',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (widget.driver.walletBalance < 0) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'NEGATIVE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -72,10 +114,64 @@ class _WalletScreenState extends State<WalletScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (widget.driver.walletBalance < 0) ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Please top-up before next trip',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
+            
+            // Negative Balance Warning
+            if (widget.driver.walletBalance < 0) ...[
+              const SizedBox(height: 16),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.rejectedColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.rejectedColor.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning, color: AppColors.rejectedColor),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Negative Wallet Balance: ₹${widget.driver.walletBalance.abs().toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color: AppColors.rejectedColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Please top-up before accepting next trip.',
+                            style: TextStyle(
+                              color: AppColors.grayText,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
 
             Row(
@@ -113,16 +209,32 @@ class _WalletScreenState extends State<WalletScreen> {
             ..._transactions.map((transaction) => Card(
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: Colors.green,
-                  child: const Icon(Icons.directions_car, color: Colors.white),
+                  backgroundColor: _getTransactionColor(transaction.type),
+                  child: Icon(
+                    _getTransactionIcon(transaction.type),
+                    color: Colors.white,
+                  ),
                 ),
-                title: const Text('Trip Earning'),
-                subtitle: Text(_formatDate(transaction['timestamp'])),
+                title: Text(_getTransactionTitle(transaction.type)),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_formatDate(transaction.timestamp)),
+                    if (transaction.description != null)
+                      Text(
+                        transaction.description!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.grayText,
+                        ),
+                      ),
+                  ],
+                ),
                 trailing: Text(
-                  '₹${transaction['amount'].toStringAsFixed(2)}',
-                  style: const TextStyle(
+                  '${transaction.amount >= 0 ? '+' : ''}₹${transaction.amount.toStringAsFixed(2)}',
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                    color: transaction.amount >= 0 ? AppColors.acceptedColor : AppColors.rejectedColor,
                   ),
                 ),
               ),
@@ -167,17 +279,55 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
-  String _formatDate(String timestamp) {
-    final date = DateTime.parse(timestamp);
+  Color _getTransactionColor(String type) {
+    switch (type) {
+      case 'trip_earning':
+        return AppColors.acceptedColor;
+      case 'trip_fee':
+        return AppColors.rejectedColor;
+      case 'topup':
+        return AppColors.blueStart;
+      default:
+        return AppColors.grayText;
+    }
+  }
+
+  IconData _getTransactionIcon(String type) {
+    switch (type) {
+      case 'trip_earning':
+        return Icons.directions_car;
+      case 'trip_fee':
+        return Icons.remove_circle;
+      case 'topup':
+        return Icons.add_circle;
+      default:
+        return Icons.account_balance_wallet;
+    }
+  }
+
+  String _getTransactionTitle(String type) {
+    switch (type) {
+      case 'trip_earning':
+        return 'Trip Earning';
+      case 'trip_fee':
+        return 'Trip Fee';
+      case 'topup':
+        return 'Wallet Top-up';
+      default:
+        return 'Transaction';
+    }
+  }
+
+  String _formatDate(DateTime timestamp) {
     final now = DateTime.now();
-    final difference = now.difference(date);
+    final difference = now.difference(timestamp);
 
     if (difference.inDays == 0) {
-      return 'Today ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+      return 'Today ${timestamp.hour}:${timestamp.minute.toString().padLeft(2, '0')}';
     } else if (difference.inDays == 1) {
       return 'Yesterday';
     } else {
-      return '${date.day}/${date.month}/${date.year}';
+      return '${timestamp.day}/${timestamp.month}/${timestamp.year}';
     }
   }
 }

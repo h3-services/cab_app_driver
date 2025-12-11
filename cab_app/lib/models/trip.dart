@@ -18,6 +18,12 @@ class Trip {
   final String? riderName;
   final String? riderPhone;
   final double? distance;
+  final int? startKm;
+  final int? endKm;
+  final double? tollAmount;
+  final double? driverAllowance;
+  final double? kmRate;
+  final double? walletFeeDeducted;
 
   Trip({
     required this.id,
@@ -39,6 +45,12 @@ class Trip {
     this.riderName,
     this.riderPhone,
     this.distance,
+    this.startKm,
+    this.endKm,
+    this.tollAmount,
+    this.driverAllowance,
+    this.kmRate,
+    this.walletFeeDeducted,
   });
 
   factory Trip.fromMap(Map<String, dynamic> map) {
@@ -62,6 +74,12 @@ class Trip {
       riderName: map['riderName'],
       riderPhone: map['riderPhone'],
       distance: map['distance']?.toDouble(),
+      startKm: map['startKm']?.toInt(),
+      endKm: map['endKm']?.toInt(),
+      tollAmount: map['tollAmount']?.toDouble(),
+      driverAllowance: map['driverAllowance']?.toDouble(),
+      kmRate: map['kmRate']?.toDouble(),
+      walletFeeDeducted: map['walletFeeDeducted']?.toDouble(),
     );
   }
 
@@ -86,6 +104,12 @@ class Trip {
       'riderName': riderName,
       'riderPhone': riderPhone,
       'distance': distance,
+      'startKm': startKm,
+      'endKm': endKm,
+      'tollAmount': tollAmount,
+      'driverAllowance': driverAllowance,
+      'kmRate': kmRate,
+      'walletFeeDeducted': walletFeeDeducted,
     };
   }
 }
