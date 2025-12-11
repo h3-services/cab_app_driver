@@ -12,6 +12,12 @@ class LocalStorageService {
     await prefs.setBool(_isLoggedInKey, true);
   }
 
+  static Future<void> saveDriverData(Driver driver) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_driverKey, jsonEncode(driver.toMap()));
+    await prefs.setBool(_isLoggedInKey, true);
+  }
+
   Future<Driver?> getDriver() async {
     final prefs = await SharedPreferences.getInstance();
     final driverJson = prefs.getString(_driverKey);

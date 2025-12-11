@@ -8,7 +8,7 @@ class Driver {
   final String vehicleType;
   final String vehicleNumber;
   final String vehicleModel;
-  final String status; // pending, approved, rejected
+  final String status;
   final bool isAvailable;
   final bool kycCompleted;
   final double? latitude;
@@ -19,6 +19,8 @@ class Driver {
   final double walletBalance;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? fcmToken;
+  final String role;
 
   Driver({
     required this.id,
@@ -41,30 +43,45 @@ class Driver {
     this.walletBalance = 0.0,
     required this.createdAt,
     required this.updatedAt,
+    this.fcmToken,
+    this.role = 'driver',
   });
 
   factory Driver.fromMap(Map<String, dynamic> map) {
+    final currentLocation = map['current_location'];
+    final docsUrl = map['is_docs_url'] as Map<String, dynamic>?;
+    
     return Driver(
       id: map['id'] ?? '',
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       phone: map['phone'] ?? '',
-      licenseNumber: map['licenseNumber'] ?? '',
-      aadhaarNumber: map['aadhaarNumber'] ?? '',
-      vehicleType: map['vehicleType'] ?? '',
-      vehicleNumber: map['vehicleNumber'] ?? '',
-      vehicleModel: map['vehicleModel'] ?? '',
+      licenseNumber: map['license_no'] ?? '',
+      aadhaarNumber: map['aadhaar_number'] ?? '',
+      vehicleType: map['car_type'] ?? '',
+      vehicleNumber: map['car_register_no'] ?? '',
+      vehicleModel: '',
       status: map['status'] ?? 'pending',
-      isAvailable: map['isAvailable'] ?? false,
-      kycCompleted: map['kycCompleted'] ?? false,
-      latitude: map['latitude']?.toDouble(),
-      longitude: map['longitude']?.toDouble(),
-      profileImageUrl: map['profileImageUrl'],
-      licenseImageUrl: map['licenseImageUrl'],
-      aadhaarImageUrl: map['aadhaarImageUrl'],
-      walletBalance: (map['walletBalance'] ?? 0.0).toDouble(),
-      createdAt: DateTime.parse(map['createdAt']),
-      updatedAt: DateTime.parse(map['updatedAt']),
+      isAvailable: false,
+      kycCompleted: map['is_kyc_verified'] ?? false,
+      latitude: currentLocation is Map && currentLocation.containsKey('latitude') 
+          ? currentLocation['latitude']?.toDouble() 
+          : null,
+      longitude: currentLocation is Map && currentLocation.containsKey('longitude') 
+          ? currentLocation['longitude']?.toDouble() 
+          : null,
+      profileImageUrl: map['profile_photo_url'],
+      licenseImageUrl: docsUrl?['license_url'],
+      aadhaarImageUrl: docsUrl?['aadhaar_url'],
+      walletBalance: 0.0,
+      createdAt: map['createdAt'] is int 
+          ? DateTime.fromMillisecondsSinceEpoch(map['createdAt']) 
+          : (map['createdAt']?.toDate() ?? DateTime.now()),
+      updatedAt: map['updatedAt'] is int 
+          ? DateTime.fromMillisecondsSinceEpoch(map['updatedAt']) 
+          : (map['updatedAt']?.toDate() ?? DateTime.now()),
+      fcmToken: map['fcm_token'],
+      role: map['role'] ?? 'driver',
     );
   }
 
@@ -74,22 +91,24 @@ class Driver {
       'name': name,
       'email': email,
       'phone': phone,
-      'licenseNumber': licenseNumber,
-      'aadhaarNumber': aadhaarNumber,
-      'vehicleType': vehicleType,
-      'vehicleNumber': vehicleNumber,
-      'vehicleModel': vehicleModel,
+      'license_no': licenseNumber,
+      'aadhaar_number': aadhaarNumber,
+      'car_type': vehicleType,
+      'car_register_no': vehicleNumber,
       'status': status,
-      'isAvailable': isAvailable,
-      'kycCompleted': kycCompleted,
-      'latitude': latitude,
-      'longitude': longitude,
-      'profileImageUrl': profileImageUrl,
-      'licenseImageUrl': licenseImageUrl,
-      'aadhaarImageUrl': aadhaarImageUrl,
-      'walletBalance': walletBalance,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
+      'is_kyc_verified': kycCompleted,
+      'current_location': latitude != null && longitude != null 
+          ? {'latitude': latitude, 'longitude': longitude} 
+          : null,
+      'profile_photo_url': profileImageUrl,
+      'is_docs_url': {
+        'license_url': licenseImageUrl,
+        'aadhaar_url': aadhaarImageUrl,
+      },
+      'createdAt': createdAt.millisecondsSinceEpoch,
+      'updatedAt': updatedAt.millisecondsSinceEpoch,
+      'fcm_token': fcmToken,
+      'role': role,
     };
   }
 
@@ -111,6 +130,7 @@ class Driver {
     String? licenseImageUrl,
     String? aadhaarImageUrl,
     double? walletBalance,
+    String? fcmToken,
   }) {
     return Driver(
       id: id,
@@ -133,6 +153,8 @@ class Driver {
       walletBalance: walletBalance ?? this.walletBalance,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
+      fcmToken: fcmToken ?? this.fcmToken,
+      role: role,
     );
   }
 }

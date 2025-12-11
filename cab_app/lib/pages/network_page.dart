@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'login_page.dart';
 import '../theme/colors.dart';
 
 class NetworkPage extends StatefulWidget {

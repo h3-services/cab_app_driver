@@ -4,7 +4,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/driver.dart';
 import '../models/trip.dart';
 import '../services/local_storage_service.dart';
+import '../services/auth_middleware.dart';
 import '../theme/colors.dart';
+import '../widgets/auth_guard.dart';
 import 'driver_profile_view_screen.dart';
 import 'wallet_screen.dart';
 import 'login_screen.dart';
@@ -20,6 +22,7 @@ class DriverHomeScreen extends StatefulWidget {
 
 class _DriverHomeScreenState extends State<DriverHomeScreen> {
   final _localStorageService = LocalStorageService();
+  final _authMiddleware = AuthMiddleware();
   Driver? _driver;
   List<Trip> _availableTrips = [];
   List<Trip> _approvedTrips = [];
@@ -117,14 +120,24 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(Icons.verified_user, color: AppColors.iconBg),
               const SizedBox(width: 8),
-              const Text('KYC Verification Required'),
+              const Expanded(
+                child: Text(
+                  'KYC Verification Required',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                
+                ),
+              ),
             ],
           ),
-          content: const Text(
-            'You need to complete KYC verification to go online and receive trip requests. Please upload your required documents.',
+          content: const SingleChildScrollView(
+            child: Text(
+              'You need to complete KYC verification to go online and receive trip requests. Please upload your required documents.',
+            ),
           ),
           actions: [
             TextButton(
@@ -154,7 +167,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   }
 
   Future<void> _signOut() async {
-    await _localStorageService.logout();
+    await _authMiddleware.signOut();
     if (mounted) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -230,6 +243,27 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
             ),
           ),
         ),
+        actions: [
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'signout') {
+                _signOut();
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'signout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('Sign Out', style: TextStyle(color: Colors.red)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
 
       ),
       body: _buildBody(),
@@ -267,48 +301,54 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Availability Status', style: TextStyle(fontWeight: FontWeight.bold)),
-                      Text(
-                        _driver!.isAvailable ? 'Available for trips' : (_driver!.kycCompleted ? 'Not available' : 'KYC Required'),
-                        style: TextStyle(
-                          color: _driver!.isAvailable ? Colors.green : (_driver!.kycCompleted ? Colors.red : Colors.grey),
-                        ),
-                      ),
-                      if (_driver!.isAvailable) ...[
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: _isLocationLive ? Colors.green : Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _isLocationLive ? 'Location Live' : 'Location Offline',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: _isLocationLive ? Colors.green : Colors.red,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Availability Status', style: TextStyle(fontWeight: FontWeight.bold)),
                         Text(
-                          'Last updated: ${_getTimeAgo(_lastLocationUpdate)}',
+                          _driver!.isAvailable ? 'Available for trips' : (_driver!.kycCompleted ? 'Not available' : 'KYC Required'),
                           style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.grayText,
+                            color: _driver!.isAvailable ? Colors.green : (_driver!.kycCompleted ? Colors.red : Colors.grey),
                           ),
                         ),
+                        if (_driver!.isAvailable) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: _isLocationLive ? Colors.green : Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  _isLocationLive ? 'Location Live' : 'Location Offline',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: _isLocationLive ? Colors.green : Colors.red,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            'Last updated: ${_getTimeAgo(_lastLocationUpdate)}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppColors.grayText,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                   Switch(
                     value: _driver!.isAvailable,

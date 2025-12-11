@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import '../services/email_auth_service.dart';
-import '../services/google_auth_service.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import '../services/driver_email_service.dart';
+import '../services/local_storage_service.dart';
+import '../models/driver.dart';
 import '../theme/colors.dart';
-import '../screens/driver_home_screen.dart';
+import 'driver_home_screen.dart';
+import 'profile_update_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,296 +15,211 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _emailAuthService = EmailAuthService();
-  final _googleAuthService = GoogleAuthService();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+  );
+  final _driverEmailService = DriverEmailService();
   bool _isLoading = false;
-  bool _obscurePassword = true;
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+
+  Future<void> _handleGoogleSignIn() async {
+    if (_isLoading) return;
     
     setState(() => _isLoading = true);
     
-    final result = await _emailAuthService.signInWithEmail(
-        _emailController.text,
-        _passwordController.text,
-      );
-    
-    setState(() => _isLoading = false);
-    
-    if (result['success']) {
-      // Firebase Auth will automatically handle navigation via StreamBuilder
-      print('Login successful');
-    } else {
+    try {
+      await _googleSignIn.signOut();
+      final account = await _googleSignIn.signIn();
+      
+      if (account != null) {
+        print('Google Sign-In successful: ${account.email}');
+        final driver = await _driverEmailService.getDriverByEmail(account.email);
+        print('Driver found: ${driver != null}');
+        
+        if (driver != null) {
+          print('Driver status: ${driver.status}');
+          if (driver.status == 'blocked' || driver.status == 'suspended') {
+            _showError('Account is ${driver.status}. Contact support.');
+            return;
+          }
+          
+          print('Saving driver data...');
+          await LocalStorageService.saveDriverData(driver);
+          print('Driver data saved, navigating to home...');
+          
+          if (mounted) {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const DriverHomeScreen()),
+              (route) => false,
+            );
+            print('Navigation completed');
+          }
+        } else {
+          print('Driver not found in database, navigating to profile update');
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProfileUpdateScreen(
+                  driver: Driver(
+                    id: '',
+                    name: account.displayName ?? '',
+                    email: account.email,
+                    phone: '',
+                    licenseNumber: '',
+                    aadhaarNumber: '',
+                    vehicleType: '',
+                    vehicleNumber: '',
+                    vehicleModel: '',
+                    createdAt: DateTime.now(),
+                    updatedAt: DateTime.now(),
+                  ),
+                ),
+              ),
+            );
+          }
+        }
+      } else {
+        print('Google sign-in cancelled');
+        _showError('Google sign-in cancelled');
+      }
+    } catch (e) {
+      print('Google Sign-In Error: $e');
+      _showError('Error: ${e.toString()}');
+    } finally {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['error'])),
-        );
+        setState(() => _isLoading = false);
       }
     }
   }
 
-  Future<void> _googleSignIn() async {
-    setState(() => _isLoading = true);
-    
-    final result = await _googleAuthService.signInWithGoogle();
-    
-    setState(() => _isLoading = false);
-    
-    if (result != null && result['success']) {
-      // Firebase Auth will automatically handle navigation via StreamBuilder
-      print('Google login successful');
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result?['error'] ?? 'Google Sign-In failed')),
-        );
-      }
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.mainBg,
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 60),
-                
-                // Logo
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/images/loho.png',
-                    width: 80,
-                    height: 80,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Icon(
-                        Icons.local_taxi,
-                        size: 80,
-                        color: AppColors.accentText,
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 40),
-                
-                // Title
-                Text(
-                  'Cab Driver Login',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryText,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sign in to start your journey',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColors.grayText,
-                  ),
-                ),
-                const SizedBox(height: 40),
-                
-                // Email Field
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'Enter your email',
-                    prefixIcon: Icon(Icons.email_outlined, color: AppColors.iconBg),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Logo
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
                     ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.iconBg, width: 2),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!value.contains('@')) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-                
-                // Password Field
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    hintText: 'Enter your password',
-                    prefixIcon: Icon(Icons.lock_outline, color: AppColors.iconBg),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                        color: AppColors.grayText,
-                      ),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.iconBg, width: 2),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 30),
-                
-                // Login Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _login,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.iconBg,
-                      foregroundColor: Colors.white,
-                      elevation: 3,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Login',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                
-                // OR Divider
-                Row(
-                  children: [
-                    Expanded(child: Divider(color: AppColors.grayText)),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        'OR',
-                        style: TextStyle(
-                          color: AppColors.grayText,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    Expanded(child: Divider(color: AppColors.grayText)),
                   ],
                 ),
-                const SizedBox(height: 20),
-                
-                // Google Sign-In Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: OutlinedButton(
-                    onPressed: _isLoading ? null : _googleSignIn,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppColors.grayText.withOpacity(0.3)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          'assets/images/google_logo.png',
-                          width: 24,
-                          height: 24,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Icon(
-                              Icons.g_mobiledata,
-                              size: 24,
-                              color: AppColors.primaryText,
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Continue with Google',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.primaryText,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                
-                // Forgot Password
-                TextButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Contact admin for password reset')),
+                child: Image.asset(
+                  'assets/images/loho.png',
+                  width: 80,
+                  height: 80,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Icon(
+                      Icons.local_taxi,
+                      size: 80,
+                      color: AppColors.accentText,
                     );
                   },
-                  child: Text(
-                    'Forgot Password?',
-                    style: TextStyle(
-                      color: AppColors.iconBg,
-                      fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 40),
+              
+              // Title
+              const Text(
+                'Cab Driver Login',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.primaryText,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sign in to start your journey',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: AppColors.grayText,
+                ),
+              ),
+              const SizedBox(height: 40),
+              
+              // Google Sign-In Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _handleGoogleSignIn,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    elevation: 3,
+                    side: BorderSide(color: AppColors.grayText.withOpacity(0.3)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Image.asset(
+                              'assets/images/google_logo.png',
+                              width: 24,
+                              height: 24,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.g_mobiledata,
+                                  size: 24,
+                                  color: Colors.black87,
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 12),
+                            const Text(
+                              'Continue with Google',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
+
 }

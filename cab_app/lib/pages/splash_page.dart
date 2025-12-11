@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'login_page.dart';
+import '../screens/login_screen.dart';
 import '../theme/colors.dart';
 import 'network_page.dart';
 import 'update_page.dart';
@@ -47,7 +47,7 @@ class _SplashPageState extends State<SplashPage> {
     
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
     );
   }
 

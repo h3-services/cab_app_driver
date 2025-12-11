@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/local_storage_service.dart';
+import '../services/auth_middleware.dart';
 import '../theme/colors.dart';
 import 'login_screen.dart';
 import 'driver_home_screen.dart';
@@ -12,7 +12,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
-  final LocalStorageService _localStorageService = LocalStorageService();
+  final AuthMiddleware _authMiddleware = AuthMiddleware();
   
   String _status = 'Initializing...';
   late AnimationController _logoController;
@@ -46,17 +46,22 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   Future<void> _initializeApp() async {
     await Future.delayed(const Duration(seconds: 1));
     
-    setState(() => _status = 'Loading...');
+    setState(() => _status = 'Checking authentication...');
     await Future.delayed(const Duration(milliseconds: 500));
     
-    final isLoggedIn = await _localStorageService.isLoggedIn();
+    final authResult = await _authMiddleware.checkAuthStatus();
     
-    setState(() => _status = 'Ready to go!');
-    await Future.delayed(const Duration(milliseconds: 800));
-    
-    if (isLoggedIn) {
+    if (authResult['isAuthenticated'] == true) {
+      setState(() => _status = 'Welcome back!');
+      await Future.delayed(const Duration(milliseconds: 800));
       _navigateToHome();
     } else {
+      if (authResult['error'] != null) {
+        setState(() => _status = authResult['error']);
+        await Future.delayed(const Duration(seconds: 2));
+      }
+      setState(() => _status = 'Redirecting to login...');
+      await Future.delayed(const Duration(milliseconds: 800));
       _navigateToLogin();
     }
   }

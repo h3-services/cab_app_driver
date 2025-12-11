@@ -8,20 +8,42 @@ class GoogleAuthService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: '296131056808-ff7b1vg7ld1s04k1m6qs1v0n9khujcr6.apps.googleusercontent.com',
+    scopes: ['email', 'profile'],
   );
 
   Future<Map<String, dynamic>?> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
+      // Check if already signed in
+      final User? currentUser = _auth.currentUser;
+      if (currentUser != null) {
         return {
-          'success': false,
-          'error': 'Google Sign-In cancelled',
+          'success': true,
+          'id': currentUser.uid,
+          'name': currentUser.displayName ?? 'Firebase User',
+          'email': currentUser.email ?? '',
         };
       }
 
+      // Sign out first to ensure clean state
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+      
+      // Try Google Sign-In with timeout
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => null,
+      );
+      
+      if (googleUser == null) {
+        return {'success': false, 'error': 'Sign-in cancelled or timed out'};
+      }
+
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      
+      if (googleAuth.accessToken == null || googleAuth.idToken == null) {
+        return {'success': false, 'error': 'Failed to get authentication tokens'};
+      }
+      
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
@@ -34,28 +56,54 @@ class GoogleAuthService {
         return {
           'success': true,
           'id': user.uid,
-          'name': user.displayName ?? 'Google User',
-          'email': user.email ?? '',
-          'photoUrl': user.photoURL,
+          'name': user.displayName ?? googleUser.displayName ?? 'Firebase User',
+          'email': user.email ?? googleUser.email ?? '',
         };
       }
       
-      return {
-        'success': false,
-        'error': 'Authentication failed',
-      };
+      return {'success': false, 'error': 'No user data received'};
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Google Sign-In failed: $e',
-      };
+      print('Google Sign-In Error: $e');
+      
+      // Specific error handling
+      String errorMessage = 'Authentication failed';
+      if (e.toString().contains('PlatformException')) {
+        errorMessage = 'Google Play Services error. Please update Google Play Services.';
+      } else if (e.toString().contains('network')) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else if (e.toString().contains('DEVELOPER_ERROR')) {
+        errorMessage = 'Configuration error. Please contact support.';
+      }
+      
+      // Check if Firebase Auth worked despite error
+      final User? user = _auth.currentUser;
+      if (user != null) {
+        return {
+          'success': true,
+          'id': user.uid,
+          'name': user.displayName ?? 'Firebase User',
+          'email': user.email ?? '',
+        };
+      }
+      
+      return {'success': false, 'error': errorMessage};
     }
   }
 
   Future<void> signOut() async {
-    await Future.wait([
-      _auth.signOut(),
-      _googleSignIn.signOut(),
-    ]);
+    try {
+      await Future.wait([
+        _auth.signOut(),
+        _googleSignIn.signOut(),
+      ]);
+    } catch (e) {
+      print('Sign out error: $e');
+    }
   }
+  
+  User? get currentUser => _auth.currentUser;
+  
+  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  
+  bool get isSignedIn => _auth.currentUser != null;
 }

@@ -19,27 +19,27 @@ class DriverService {
       if (querySnapshot.docs.isNotEmpty) {
         final doc = querySnapshot.docs.first;
         final data = doc.data();
-        
-        return Driver(
-          id: doc.id,
-          name: data['name'] ?? '',
-          email: data['email'] ?? email,
-          phone: data['phone'] ?? '',
-          licenseNumber: data['licenseNumber'] ?? '',
-          aadhaarNumber: data['aadhaarNumber'] ?? '',
-          vehicleType: data['vehicleType'] ?? '',
-          vehicleNumber: data['vehicleNumber'] ?? '',
-          vehicleModel: data['vehicleModel'] ?? '',
-          status: data['status'] ?? 'pending',
-          isAvailable: data['isAvailable'] ?? false,
-          walletBalance: (data['walletBalance'] ?? 0.0).toDouble(),
-          createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-        );
+        data['id'] = doc.id;
+        return Driver.fromMap(data);
       }
       return null;
     } catch (e) {
       print('Error fetching driver: $e');
+      return null;
+    }
+  }
+
+  Future<Driver?> getDriverById(String uid) async {
+    try {
+      final doc = await _firestore.collection('drivers').doc(uid).get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        data['id'] = doc.id;
+        return Driver.fromMap(data);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching driver by ID: $e');
       return null;
     }
   }

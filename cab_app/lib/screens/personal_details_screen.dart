@@ -1,13 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/driver.dart';
 import '../services/local_storage_service.dart';
 import '../theme/colors.dart';
 import 'kyc_upload_screen.dart';
 
 class PersonalDetailsScreen extends StatefulWidget {
-  final Driver driver;
+  final Driver? driver;
+  final String? userId;
+  final String? userName;
+  final String? userEmail;
 
-  const PersonalDetailsScreen({super.key, required this.driver});
+  const PersonalDetailsScreen({
+    super.key, 
+    this.driver,
+    this.userId,
+    this.userName,
+    this.userEmail,
+  });
 
   @override
   State<PersonalDetailsScreen> createState() => _PersonalDetailsScreenState();
@@ -15,7 +25,7 @@ class PersonalDetailsScreen extends StatefulWidget {
 
 class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
   final _localStorageService = LocalStorageService();
-  late Driver _driver;
+  Driver? _driver;
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -33,42 +43,94 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
   }
 
   void _initializeControllers() {
-    _nameController.text = _driver.name;
-    _phoneController.text = _driver.phone;
-    _emailController.text = _driver.email;
-    _licenseNumberController.text = _driver.licenseNumber;
-    _aadhaarNumberController.text = _driver.aadhaarNumber;
-    _vehicleNumberController.text = _driver.vehicleNumber;
-    _selectedVehicleType = _driver.vehicleType;
+    if (_driver != null) {
+      _nameController.text = _driver!.name;
+      _phoneController.text = _driver!.phone;
+      _emailController.text = _driver!.email;
+      _licenseNumberController.text = _driver!.licenseNumber;
+      _aadhaarNumberController.text = _driver!.aadhaarNumber;
+      _vehicleNumberController.text = _driver!.vehicleNumber;
+      
+      final validTypes = ['SUV', 'Sedan', 'Hatchback'];
+      // Force empty strings to null to prevent dropdown assertion error
+      final vehicleType = _driver!.vehicleType;
+      _selectedVehicleType = (vehicleType != null && 
+                            vehicleType.isNotEmpty && 
+                            vehicleType != '' &&
+                            validTypes.contains(vehicleType)) 
+          ? vehicleType 
+          : null;
+    } else {
+      // New user - initialize with Google sign-in data
+      _nameController.text = widget.userName ?? '';
+      _emailController.text = widget.userEmail ?? '';
+    }
   }
 
   Future<void> _saveData() async {
-    final updatedDriver = _driver.copyWith(
-      name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
-      email: _emailController.text.trim(),
-      licenseNumber: _licenseNumberController.text.trim(),
-      aadhaarNumber: _aadhaarNumberController.text.trim(),
-      vehicleNumber: _vehicleNumberController.text.trim(),
-      vehicleType: _selectedVehicleType ?? _driver.vehicleType,
-    );
-
-    await _localStorageService.saveDriver(updatedDriver);
+    final Driver driverToSave;
     
-    Navigator.push(
+    if (_driver != null) {
+      // Existing driver - update
+      driverToSave = _driver!.copyWith(
+        name: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+        email: _emailController.text.trim(),
+        licenseNumber: _licenseNumberController.text.trim(),
+        aadhaarNumber: _aadhaarNumberController.text.trim(),
+        vehicleNumber: _vehicleNumberController.text.trim(),
+        vehicleType: _selectedVehicleType ?? _driver!.vehicleType,
+      );
+    } else {
+      // New driver - create
+      driverToSave = Driver(
+        id: widget.userId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+        name: _nameController.text.trim(),
+        phone: _phoneController.text.trim(),
+        email: _emailController.text.trim(),
+        licenseNumber: _licenseNumberController.text.trim(),
+        aadhaarNumber: _aadhaarNumberController.text.trim(),
+        vehicleNumber: _vehicleNumberController.text.trim(),
+        vehicleModel: '', // Will be set later if needed
+        vehicleType: _selectedVehicleType ?? 'Sedan',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }
+
+    // Save to local storage
+    await _localStorageService.saveDriver(driverToSave);
+    
+    // Save to Firestore
+    final docId = driverToSave.id?.isNotEmpty == true 
+        ? driverToSave.id! 
+        : DateTime.now().millisecondsSinceEpoch.toString();
+    
+    await FirebaseFirestore.instance
+        .collection('drivers')
+        .doc(docId)
+        .set({
+      'name': driverToSave.name,
+      'email': driverToSave.email,
+      'phone': driverToSave.phone,
+      'license_number': driverToSave.licenseNumber,
+      'aadhaar_number': driverToSave.aadhaarNumber,
+      'car_type': driverToSave.vehicleType,
+      'car_number': driverToSave.vehicleNumber,
+      'car_model': driverToSave.vehicleModel,
+      'kyc_completed': false,
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+    
+    // Navigate to KYC upload screen
+    Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => KycUploadScreen(driver: updatedDriver)),
+      MaterialPageRoute(builder: (context) => KycUploadScreen(driver: driverToSave)),
     );
   }
 
-  Future<void> _saveAndContinue() async {
-    await _saveData();
-    
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => KycUploadScreen(driver: _driver)),
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -150,11 +212,12 @@ class _PersonalDetailsScreenState extends State<PersonalDetailsScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: _selectedVehicleType,
+                      value: (_selectedVehicleType == null || _selectedVehicleType!.isEmpty) ? null : _selectedVehicleType,
                       decoration: const InputDecoration(
                         labelText: 'Vehicle Type',
                         border: OutlineInputBorder(),
                       ),
+                      hint: const Text('Select Vehicle Type'),
                       items: ['SUV', 'Sedan', 'Hatchback'].map((type) {
                         return DropdownMenuItem(value: type, child: Text(type));
                       }).toList(),

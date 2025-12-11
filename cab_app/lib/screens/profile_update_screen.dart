@@ -20,6 +20,7 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
+  final _licenseNumberController = TextEditingController();
   final _vehicleNumberController = TextEditingController();
   String? _selectedVehicleType;
 
@@ -35,7 +36,14 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
     _phoneController.text = _driver.phone;
     _vehicleNumberController.text = _driver.vehicleNumber;
     _emailController.text = _driver.email ?? '';
-    _selectedVehicleType = _driver.vehicleType;
+    _licenseNumberController.text = _driver.licenseNumber;
+    
+    final validTypes = ['SUV', 'Sedan', 'Hatchback'];
+    _selectedVehicleType = (_driver.vehicleType != null && 
+                          _driver.vehicleType!.isNotEmpty && 
+                          validTypes.contains(_driver.vehicleType)) 
+        ? _driver.vehicleType 
+        : null;
   }
 
   Future<void> _updateProfileAndContinue() async {
@@ -44,6 +52,7 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
       phone: _phoneController.text.trim(),
       vehicleNumber: _vehicleNumberController.text.trim(),
       email: _emailController.text.trim(),
+      licenseNumber: _licenseNumberController.text.trim(),
       vehicleType: _selectedVehicleType ?? _driver.vehicleType,
     );
 
@@ -147,6 +156,14 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
                         border: OutlineInputBorder(),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _licenseNumberController,
+                      decoration: const InputDecoration(
+                        labelText: 'Driving License Number',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -170,6 +187,7 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
                         labelText: 'Vehicle Type',
                         border: OutlineInputBorder(),
                       ),
+                      hint: const Text('Select Vehicle Type'),
                       items: ['SUV', 'Sedan', 'Hatchback'].map((type) {
                         return DropdownMenuItem(value: type, child: Text(type));
                       }).toList(),
@@ -322,6 +340,7 @@ class _ProfileUpdateScreenState extends State<ProfileUpdateScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _licenseNumberController.dispose();
     _vehicleNumberController.dispose();
     super.dispose();
   }
