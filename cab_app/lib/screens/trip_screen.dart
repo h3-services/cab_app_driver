@@ -4,6 +4,11 @@ import '../models/trip.dart';
 import '../services/driver_service.dart';
 import '../theme/colors.dart';
 
+// Remove this main function as TripScreen should be navigated to with a trip parameter
+// void main(List<String> args) {
+//   runApp(const TripScreen());
+// }
+
 class TripScreen extends StatefulWidget {
   final Trip trip;
 
@@ -55,9 +60,9 @@ class _TripScreenState extends State<TripScreen> {
         const SnackBar(content: Text('Trip started successfully!')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error starting trip: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error starting trip: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -72,9 +77,9 @@ class _TripScreenState extends State<TripScreen> {
       );
       Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error completing trip: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error completing trip: $e')));
     } finally {
       setState(() => _isLoading = false);
     }
@@ -85,9 +90,9 @@ class _TripScreenState extends State<TripScreen> {
     if (await canLaunchUrl(Uri.parse(url))) {
       await launchUrl(Uri.parse(url));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open maps')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not open maps')));
     }
   }
 
@@ -124,16 +129,25 @@ class _TripScreenState extends State<TripScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Trip Status', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Trip Status',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: _getStatusColor(),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             _trip.status.toUpperCase(),
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
@@ -141,7 +155,9 @@ class _TripScreenState extends State<TripScreen> {
                     const SizedBox(height: 8),
                     Text('Fare: ₹${_trip.fare.toStringAsFixed(0)}'),
                     if (_trip.distance != null)
-                      Text('Distance: ${_trip.distance!.toStringAsFixed(1)} km'),
+                      Text(
+                        'Distance: ${_trip.distance!.toStringAsFixed(1)} km',
+                      ),
                   ],
                 ),
               ),
@@ -156,7 +172,11 @@ class _TripScreenState extends State<TripScreen> {
                 subtitle: Text(_trip.pickupAddress),
                 trailing: IconButton(
                   icon: const Icon(Icons.navigation),
-                  onPressed: () => _openMaps(_trip.pickupLat, _trip.pickupLng, _trip.pickupAddress),
+                  onPressed: () => _openMaps(
+                    _trip.pickupLat,
+                    _trip.pickupLng,
+                    _trip.pickupAddress,
+                  ),
                 ),
               ),
             ),
@@ -170,7 +190,11 @@ class _TripScreenState extends State<TripScreen> {
                 subtitle: Text(_trip.dropAddress),
                 trailing: IconButton(
                   icon: const Icon(Icons.navigation),
-                  onPressed: () => _openMaps(_trip.dropLat, _trip.dropLng, _trip.dropAddress),
+                  onPressed: () => _openMaps(
+                    _trip.dropLat,
+                    _trip.dropLng,
+                    _trip.dropAddress,
+                  ),
                 ),
               ),
             ),
@@ -184,7 +208,10 @@ class _TripScreenState extends State<TripScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Rider Information', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Rider Information',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       const SizedBox(height: 8),
                       if (_trip.riderName != null)
                         Text('Name: ${_trip.riderName}'),
@@ -247,7 +274,10 @@ class _TripScreenState extends State<TripScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Trip Timeline', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Trip Timeline',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 12),
                     _buildTimelineItem('Requested', _trip.requestedAt, true),
                     if (_trip.acceptedAt != null)
@@ -296,7 +326,10 @@ class _TripScreenState extends State<TripScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
                 Text(
                   '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}',
                   style: TextStyle(fontSize: 12, color: AppColors.grayText),
