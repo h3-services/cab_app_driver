@@ -5,6 +5,7 @@ import '../theme/colors.dart';
 import 'odometer_input_screen.dart';
 import 'trip_cost_breakdown_screen.dart';
 
+
 class TripAcceptedScreen extends StatefulWidget {
   final Trip trip;
 

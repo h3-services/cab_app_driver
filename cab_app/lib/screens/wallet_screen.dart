@@ -65,9 +65,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                   gradient: LinearGradient(
-                    colors: widget.driver.walletBalance < 0 
-                        ? [AppColors.rejectedColor, AppColors.rejectedColor.withOpacity(0.8)]
-                        : [AppColors.emeraldStart, AppColors.emeraldEnd],
+                    colors: [AppColors.emeraldStart, AppColors.emeraldEnd],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -85,93 +83,23 @@ class _WalletScreenState extends State<WalletScreen> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        if (widget.driver.walletBalance < 0) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'NEGATIVE',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '₹${widget.driver.walletBalance.toStringAsFixed(2)}',
+                      '₹${(widget.driver.walletBalance < 0 ? 0.0 : widget.driver.walletBalance).toStringAsFixed(2)}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    if (widget.driver.walletBalance < 0) ...[
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Please top-up before next trip',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
             ),
             
-            // Negative Balance Warning
-            if (widget.driver.walletBalance < 0) ...[
-              const SizedBox(height: 16),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.rejectedColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.rejectedColor.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.warning, color: AppColors.rejectedColor),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Negative Wallet Balance: ₹${widget.driver.walletBalance.abs().toStringAsFixed(2)}',
-                            style: TextStyle(
-                              color: AppColors.rejectedColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Please top-up before accepting next trip.',
-                            style: TextStyle(
-                              color: AppColors.grayText,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+
             const SizedBox(height: 24),
 
             Row(
